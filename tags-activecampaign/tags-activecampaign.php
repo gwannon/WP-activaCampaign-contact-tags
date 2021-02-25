@@ -39,15 +39,8 @@ add_action('wp_footer', 'tagsActiveCampaignAddFooter', 5);
 function tagsActiveCampaignAddFooter() { 
     global $post;
 
-    $tags = array();
-    $pages = array();
-    foreach(explode("\n", chop(get_option("_tags_activecampaign_tags"))) as $line) {
-      $temp = explode(",", $line);
-      $key = $temp[0];
-      $pages[] = $temp[0];
-      unset($temp[0]);
-      $tags[$key] = array_values(array_map('trim', $temp));
-    }
+    $tags = tagsActiveCampaignGetTags();
+    $pages = tagsActiveCampaignGetPages();
 
     ob_start();    
     if (is_page($pages)) { ?>
@@ -57,7 +50,7 @@ function tagsActiveCampaignAddFooter() {
         var tags = Array("<?php $page_id = get_the_id(); echo implode('","', $tags[$page_id]); ?>");
         waitEvent(tags);
       }, <?php echo (AC_WAITING_TIME * 1000); ?>);
-      function waitEvent(tag) {
+      function waitEvent(tags) {
         //Hacemos una llamada con los datos
         jQuery.ajax({
           type: "GET",
@@ -67,7 +60,8 @@ function tagsActiveCampaignAddFooter() {
             { 
               action: 'tags_activecampaign', 
               contact_id: params.get('contact_id'),
-              tag: tag
+              page_id: <?php echo get_the_id(); ?>,
+              tags: tags
             }
           ),
           success: function(data){
@@ -86,21 +80,49 @@ function tagsActiveCampaignAddFooter() {
   echo  $html;
 }
 
+function tagsActiveCampaignGetTags() {
+  $tags = array();
+  foreach(explode("\n", chop(get_option("_tags_activecampaign_tags"))) as $line) {
+    $temp = explode(",", $line);
+    $key = $temp[0];
+    unset($temp[0]);
+    $tags[$key] = array_values(array_map('trim', $temp));
+  }
+  return $tags;
+}
+
+function tagsActiveCampaignGetPages() {
+  $pages = array();
+  foreach(explode("\n", chop(get_option("_tags_activecampaign_tags"))) as $line) {
+    $temp = explode(",", $line);
+    $pages[] = $temp[0];
+  }
+  return $pages;
+}
+
 //AJAX ----------------------
 function tagsActiveCampaignAjax() {
 
-  $my_tags = $_REQUEST['tag'];
+  $my_tags = $_REQUEST['tags'];
+
+  $my_page_id = $_REQUEST['page_id'];
+  $check_tags = tagsActiveCampaignGetTags();
 
   if(AC_DEBUG) $response['request'] = $_REQUEST;
   if(AC_DEBUG) $response['cookie'] = $_COOKIE;
 
-  /*print_r ($_REQUEST);
-  print_r ($_COOKIE);*/
   $my_contact_id = (isset($_REQUEST['contact_id']) && $_REQUEST['contact_id'] > 0 ? $_REQUEST['contact_id'] : $_COOKIE['contact_id']);
   if(AC_DEBUG) $response['contact_id'] = $my_contact_id;
 
   if ($my_contact_id > 0) {
     foreach ($my_tags as $my_tag) {
+      if (!in_array($my_tag, $check_tags[$my_page_id])) { //Chequeamos que no se puedan meter tags no autorizadas 
+        header("HTTP/1.1 404 Not Found");
+        $response['message'][] = array("text" => "Not allowed tag '".$my_tag."'", "status" => "ERROR");
+        echo json_encode($response);
+        wp_die();
+      }
+
       $my_tag_id = 0;
       
       //Buscamos nuestra etiqueta ----------------------------------------------------
