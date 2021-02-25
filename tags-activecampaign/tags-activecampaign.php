@@ -20,6 +20,7 @@ define('AC_WAITING_TIME', get_option("_tags_activecampaign_waiting_time"));
 define('AC_API_DOMAIN', get_option("_tags_activecampaign_api_domain")); 
 define('AC_API_TOKEN', get_option("_tags_activecampaign_api_token"));
 define('AC_COOKIE_DAYS', get_option("_tags_activecampaign_cookie_days"));
+define('AC_DEBUG', false);
 
 //Cargamos las funciones que crean las páginas en el WP-ADMIN
 require_once(dirname(__FILE__)."/admin.php");
@@ -28,7 +29,7 @@ require_once(dirname(__FILE__)."/admin.php");
 //Cookies -------------------
 add_action('init', 'tagsActiveCampaignAddCookies');
 function tagsActiveCampaignAddCookies(){
- if(isset($_REQUEST['contact_id'])) {
+ if(isset($_REQUEST['contact_id']) && AC_COOKIE_DAYS > 0) {
   setcookie("contact_id", $_REQUEST['contact_id'], time()+(3600 * 24 * AC_COOKIE_DAYS), "/");
  }
 }
@@ -48,11 +49,9 @@ function tagsActiveCampaignAddFooter() {
       $tags[$key] = array_values(array_map('trim', $temp));
     }
 
-    ob_start();         setTimeout(function () {
-      var tags = Array("<?php $page_id = get_the_id(); echo implode('","', $tags[$page_id]); ?>");
-      waitEvent(tags);
-    }, <?php echo (AC_WAITING_TIME * 1000); ?>);
-
+    ob_start();    
+    if (is_page($pages)) { ?>
+    <script>
       var params = new window.URLSearchParams(window.location.search);
       setTimeout(function () {
         var tags = Array("<?php $page_id = get_the_id(); echo implode('","', $tags[$page_id]); ?>");
@@ -92,13 +91,14 @@ function tagsActiveCampaignAjax() {
 
   $my_tags = $_REQUEST['tag'];
 
-  $response['request'] = $_REQUEST;
-  $response['cookie'] = $_COOKIE;
+  if(AC_DEBUG) $response['request'] = $_REQUEST;
+  if(AC_DEBUG) $response['cookie'] = $_COOKIE;
 
   /*print_r ($_REQUEST);
   print_r ($_COOKIE);*/
   $my_contact_id = (isset($_REQUEST['contact_id']) && $_REQUEST['contact_id'] > 0 ? $_REQUEST['contact_id'] : $_COOKIE['contact_id']);
-  $response[] = array("contact_id" => $my_contact_id);
+  if(AC_DEBUG) $response['contact_id'] = $my_contact_id;
+
   if ($my_contact_id > 0) {
     foreach ($my_tags as $my_tag) {
       $my_tag_id = 0;
@@ -112,9 +112,11 @@ function tagsActiveCampaignAjax() {
       $result = curl_exec($curl);
       $tags  = json_decode($result)->tags;
       curl_close($curl);
+      if(AC_DEBUG) $response['search_tags'] = json_decode($result);
       
-      //Sacamos el id de la tag      
-
+      //Sacamos el id de la tag   
+      foreach($tags as $tag) {
+        if($tag->tag == $my_tag) {
           $my_tag_id = $tag->id;
           break;
         }
@@ -135,6 +137,7 @@ function tagsActiveCampaignAjax() {
         curl_setopt($curl, CURLOPT_HTTPHEADER, array('Api-Token: '.AC_API_TOKEN));
         curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
         $result = curl_exec($curl);
+        if(AC_DEBUG) $response['create_tags'] = json_decode($result);
         $my_tag_id = json_decode($result)->tag->id;
         curl_close($curl);
         $response['message'][] = array("tag" => $my_tag, "status" => "CREATE");
@@ -154,11 +157,12 @@ function tagsActiveCampaignAjax() {
       curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
       curl_setopt($curl, CURLOPT_HTTPHEADER, array('Api-Token: '.AC_API_TOKEN));
       $result = curl_exec($curl);
-
+      if(AC_DEBUG) $response['contact_tags'] = json_decode($result);
       //echo json_encode($result);
       $response['message'][] = array("tag" => $my_tag, "status" => "OK");
     }
    } else {
+    header("HTTP/1.1 404 Not Found");
     $response['message'][] = array("text" => "NO contact_id", "status" => "ERROR");
    }
   echo json_encode($response);

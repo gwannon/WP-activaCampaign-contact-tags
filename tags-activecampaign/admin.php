@@ -28,15 +28,19 @@ function tagsActiveCampaignPageSettings() {
 		
 		<h1><?php _e("Configuración de las etiquetas", 'tags-activecampaign'); ?></h1>
 		<h2><?php _e("Tiempo de espera (en segundos)", 'tags-activecampaign'); ?>:</h2>
-		<input type="number" name="_tags_activecampaign_waiting_time" value="<?php echo get_option("_tags_activecampaign_waiting_time"); ?>" /><br/><br/>
+		<input type="number" name="_tags_activecampaign_waiting_time" value="<?php echo get_option("_tags_activecampaign_waiting_time"); ?>" /><br/>
 
 		<h2><?php _e("Duración de cookie (en días)", 'tags-activecampaign'); ?>:</h2>
 		<input type="number" name="_tags_activecampaign_cookie_days" value="<?php echo get_option("_tags_activecampaign_cookie_days"); ?>"><br/><br/>
-		
+		<p><?php _e("0 desactiva la gneración de la cookie .", 'tags-activecampaign'); ?></p><br/>
+
 		<h2><?php _e("Etiquetas", 'tags-activecampaign'); ?>:</h2>
 		<textarea name="_tags_activecampaign_tags" rows="10" style="width: 100%;"><?php echo get_option("_tags_activecampaign_tags"); ?></textarea><br/>
 		<p><?php _e("Una linea por cada página con el formato <b>'page_id,tag-1,tag-2,tag-3'</b>. Si queremos que en la página 127 meta los tags 'interes-ayudas' y 'interes-ayudas-comercio', debemos meter la linea <b>'127,interes-ayudas,interes-ayudas-comercio'</b>.", 'tags-activecampaign'); ?></p><br/><br/>
 		<input type="submit" name="send" class="button button-primary" value="<?php _e("Guardar"); ?>" />
 	</form>
+	<h2><?php _e("Modo de uso", 'tags-activecampaign'); ?>:</h2>
+	<p><?php _e("Los enalces que queramos rastrear deberán tener en Active Campaign el parametro contact_id con el valor de la ID de contacto del usuario.</p><p>Por ejemplo:<br/>https://midominio.com/?contact_id=%CONTACTID%", 'tags-activecampaign'); ?></p>
+
 	<?php
 }
